@@ -114,7 +114,7 @@ const updateProject = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, project, "Project updated successfully"));
 });
 
-const deleteProjects = asyncHandler(async (req, res) => {
+const deleteProject = asyncHandler(async (req, res) => {
   const { projectId } = req.params;
 
   const project = await Project.findByIdAndUpdate(projectId);
@@ -272,7 +272,7 @@ export {
   addMembersToProject,
   createProject,
   deleteMember,
-  deleteProjects,
+  deleteProject,
   getProjectById,
   getProjectMembers,
   getProjects,
