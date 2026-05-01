@@ -6,7 +6,18 @@ import { ApiResponse } from "../utils/api-response.js";
 import { asyncHandler } from "../utils/async-handler.js";
 
 const getTasks = asyncHandler(async (req, res) => {
-  //chai
+  const { projectId } = req.params;
+  const project = await Project.findById(projectId);
+  if (!project) {
+    throw new ApiError(404, "Project not found");
+  }
+  const tasks = await Task.find({
+    project: new mongoose.Types.ObjectId(projectId),
+  }).populate("assignedTo", "avatar username fullName");
+
+  return res
+    .status(201)
+    .json(new ApiResponse(201, task, "Task fetched successfully"));
 });
 
 const createTask = asyncHandler(async (req, res) => {
