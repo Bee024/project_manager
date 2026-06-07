@@ -33,10 +33,12 @@ const userSchema = new Schema(
     fullName: {
       type: String,
       trim: true,
+      maxlength: 80,
     },
     password: {
       type: String,
       required: [true, "Password is required"],
+      minlength: 8,
     },
     isEmailVerified: {
       type: Boolean,

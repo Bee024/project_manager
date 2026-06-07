@@ -14,8 +14,12 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
+    "check": "node -e \"import('./src/app.js').then(() => console.log('app import ok')).catch((err) => { console.error(err); process.exit(1); })\"",
     "dev": "nodemon src/index.js",
-    "start": "node src/index.js"
+    "format": "prettier \"**/*.{js,json,md,css,html,yml}\" --write",
+    "lint": "prettier \"**/*.{js,json,md,css,html,yml}\" --check",
+    "start": "node src/index.js",
+    "test": "node --test"
   },
   "devDependencies": {
     "nodemon": "^3.1.11",

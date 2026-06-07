@@ -1,4 +1,4 @@
-import { Schema } from "mongoose";
+import mongoose, { Schema } from "mongoose";
 
 const projectNoteSchema = new Schema(
   {
@@ -19,5 +19,7 @@ const projectNoteSchema = new Schema(
   },
   { timestamps: true },
 );
+
+projectNoteSchema.index({ project: 1, createdAt: -1 });
 
 export const ProjectNote = mongoose.model("ProjectNote", projectNoteSchema);

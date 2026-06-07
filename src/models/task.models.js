@@ -1,4 +1,4 @@
-import { Schema } from "mongoose";
+import mongoose, { Schema } from "mongoose";
 import { AvailableTaskStatuses, TaskStatusEnum } from "../utils/constants.js";
 
 const taskSchema = new Schema(
@@ -31,8 +31,10 @@ const taskSchema = new Schema(
       type: [
         {
           url: String,
+          localPath: String,
           mimetype: String,
           size: Number,
+          originalName: String,
         },
       ],
       default: [],
@@ -41,4 +43,7 @@ const taskSchema = new Schema(
   { timestamps: true },
 );
 
-export const Tasks = monggose.model("Task", taskSchema);
+taskSchema.index({ project: 1, status: 1 });
+taskSchema.index({ assignedTo: 1 });
+
+export const Task = mongoose.model("Task", taskSchema);

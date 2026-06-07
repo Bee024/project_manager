@@ -1,4 +1,5 @@
 import jwt from "jsonwebtoken";
+import mongoose from "mongoose";
 import { ProjectMember } from "../models/projectmember.models.js";
 import { User } from "../models/user.models.js";
 import { ApiError } from "../utils/api-error.js";
@@ -7,7 +8,7 @@ import { asyncHandler } from "../utils/async-handler.js";
 export const verifyJWT = asyncHandler(async (req, res, next) => {
   const token =
     req.cookies?.accessToken ||
-    req.header("Authorization")?.replace("Bearer ", "");
+    req.header("Authorization")?.replace(/^Bearer\s+/i, "");
 
   if (!token) {
     throw new ApiError(401, "Unauthorized request");
@@ -30,29 +31,36 @@ export const verifyJWT = asyncHandler(async (req, res, next) => {
 });
 
 export const validateProjectPermission = (roles = []) => {
-  asyncHandler(async (req, res, next) => {
+  return asyncHandler(async (req, res, next) => {
     const { projectId } = req.params;
+    const allowedRoles = Array.isArray(roles) ? roles : [roles];
 
     if (!projectId) {
       throw new ApiError(400, "project id is missing");
     }
 
-    const project = await ProjectMember.findOne({
+    if (!mongoose.isValidObjectId(projectId)) {
+      throw new ApiError(400, "project id is invalid");
+    }
+
+    const projectMember = await ProjectMember.findOne({
       project: new mongoose.Types.ObjectId(projectId),
       user: new mongoose.Types.ObjectId(req.user._id),
     });
 
-    if (!project) {
-      throw new ApiError(400, "project not found");
+    if (!projectMember) {
+      throw new ApiError(403, "You are not a member of this project");
     }
 
-    const givenRole = project?.role;
+    const givenRole = projectMember.role;
 
-    req.user.role = givenRole;
+    req.projectMember = projectMember;
+    req.projectRole = givenRole;
 
-    if (!roles.includes(givenRole)) {
-      throw new ApiError(403, "");
+    if (allowedRoles.length && !allowedRoles.includes(givenRole)) {
+      throw new ApiError(403, "You do not have permission for this action");
     }
+
     next();
   });
 };

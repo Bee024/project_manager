@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NetAcad AutoRunner</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <h1>AutoRunner</h1>
+    <p id="state" class="state">Idle</p>
+  </header>
+
+  <label class="field" for="course">Course</label>
+  <select id="course">
+    <option value="ccna1">CCNA1 — Intro to Networks</option>
+    <option value="ccna2">CCNA2 — Switching &amp; Routing</option>
+    <option value="ccna3">CCNA3 — Enterprise &amp; Security</option>
+  </select>
+
+  <label class="field" for="apiKey">OpenAI API Key <span id="apiKeyStatus" class="api-key-status"></span></label>
+  <div class="api-key-row">
+    <input type="password" id="apiKey" placeholder="sk-..." autocomplete="off" spellcheck="false" />
+    <button type="button" id="saveKey" class="btn btn-sm">Save</button>
+  </div>
+
+  <div class="actions">
+    <button type="button" id="start" class="btn primary">Start</button>
+    <button type="button" id="stop" class="btn" disabled>Stop</button>
+  </div>
+
+  <section class="log" aria-label="Activity">
+    <h2>Activity</h2>
+    <ul id="log"></ul>
+  </section>
+
+  <p id="hint" class="hint">Open www.netacad.com course tab first.</p>
+
+  <script src="popup.js"></script>
+</body>
+</html>
