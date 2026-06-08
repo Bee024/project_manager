@@ -32,6 +32,10 @@ const defaultCorsOrigins = [
   "https://project-manager-aktgugi32-bee024s-projects.vercel.app",
 ];
 
+const defaultCorsOriginPatterns = [
+  /^https:\/\/project-manager-[a-z0-9-]+-bee024s-projects\.vercel\.app$/i,
+];
+
 const normalizeOrigin = (value = "") => {
   const trimmed = String(value).trim();
 
@@ -73,21 +77,43 @@ const getAllowedOrigins = () => {
   ];
 };
 
+const getAllowedOriginPatterns = () => {
+  return [
+    ...defaultCorsOriginPatterns,
+    ...parseOriginList(process.env.CORS_ORIGIN_PATTERNS)
+      .map((pattern) => {
+        try {
+          return new RegExp(pattern);
+        } catch {
+          return null;
+        }
+      })
+      .filter(Boolean),
+  ];
+};
+
+const isAllowedOrigin = (origin) => {
+  const allowedOrigins = getAllowedOrigins();
+
+  if (allowedOrigins.includes("*")) return true;
+  if (allowedOrigins.includes(origin)) return true;
+
+  return getAllowedOriginPatterns().some((pattern) => pattern.test(origin));
+};
+
 const normalizeApiBaseUrl = (value = "") =>
   String(value).trim().replace(/\/+$/, "");
 
 const corsOptions = {
   origin(origin, callback) {
-    const allowedOrigins = getAllowedOrigins();
-
     // Wildcard origins must reflect the request origin when credentials are on.
-    if (allowedOrigins.includes("*")) {
+    if (getAllowedOrigins().includes("*")) {
       callback(null, origin || true);
       return;
     }
 
     // Allow requests with no origin, such as curl and server-to-server calls.
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (!origin || isAllowedOrigin(origin)) {
       callback(null, true);
       return;
     }
@@ -128,9 +154,7 @@ app.use("/api", notFoundHandler);
 const htmlPath = path.join(publicDir, "index.html");
 
 app.get(/.*/, (req, res) => {
-  const apiBaseUrl = normalizeApiBaseUrl(
-    process.env.API_BASE_URL || process.env.SERVER_URL || "",
-  );
+  const apiBaseUrl = normalizeApiBaseUrl(process.env.API_BASE_URL || "");
 
   if (!apiBaseUrl) {
     // Same-origin deployment or local dev.
