@@ -27,7 +27,10 @@ const publicDir = path.resolve(__dirname, "../public");
 const corsOptions = {
   origin(origin, callback) {
     // read at request time so dotenv is already loaded
-    const allowedOrigins = (process.env.CORS_ORIGIN || "http://localhost:5173")
+    const allowedOrigins = (
+      process.env.CORS_ORIGIN ||
+      "http://localhost:5173,http://localhost:3000,http://localhost:8000,https://manager-alpha-taupe.vercel.app"
+    )
       .split(",")
       .map((o) => o.trim())
       .filter(Boolean);
