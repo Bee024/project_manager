@@ -197,7 +197,7 @@ const renderAuth = () => {
                 `
                 : `
                   <label class="field"><span>Full name</span><input name="fullName" autocomplete="name" /></label>
-                  <label class="field"><span>Username</span><input name="username" autocomplete="username" required /></label>
+                  <label class="field"><span>Username <span class="muted">(lowercase only)</span></span><input name="username" autocomplete="username" required style="text-transform:lowercase" /></label>
                   <label class="field"><span>Email</span><input name="email" type="email" autocomplete="email" required /></label>
                 `
             }
@@ -615,9 +615,16 @@ const handleAuth = async (form) => {
   const data = Object.fromEntries(new FormData(form));
 
   if (form.dataset.form === "register") {
+    // Normalise fields before sending — username must be lowercase
+    const payload = {
+      ...data,
+      email: (data.email || "").trim().toLowerCase(),
+      username: (data.username || "").trim().toLowerCase(),
+      fullName: (data.fullName || "").trim(),
+    };
     await request("/api/v1/auth/register", {
       method: "POST",
-      body: JSON.stringify(data),
+      body: JSON.stringify(payload),
     });
     state.authMode = "login";
     setNotice({
