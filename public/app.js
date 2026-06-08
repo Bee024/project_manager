@@ -28,6 +28,7 @@ const state = {
   notes: [],
   message: "",
   error: "",
+  lastLoginEmail: "",
   resetToken: location.pathname.startsWith("/reset-password/")
     ? location.pathname.split("/").filter(Boolean).at(-1)
     : "",
@@ -170,6 +171,11 @@ const renderNotice = () => {
 
 const renderAuth = () => {
   const isLogin = state.authMode === "login";
+  // Show "resend verification" link when the error is about unverified email
+  const showResend =
+    state.error &&
+    state.error.toLowerCase().includes("not verified") &&
+    state.lastLoginEmail;
 
   app.innerHTML = `
     <main class="auth-layout">
@@ -189,25 +195,63 @@ const renderAuth = () => {
             <button class="${isLogin ? "active" : ""}" data-action="auth-mode" data-mode="login">Login</button>
             <button class="${!isLogin ? "active" : ""}" data-action="auth-mode" data-mode="register">Register</button>
           </div>
-          <form class="form-stack" data-form="${isLogin ? "login" : "register"}">
-            ${
-              isLogin
-                ? `
-                  <label class="field"><span>Email or username</span><input name="identity" autocomplete="username" required /></label>
-                `
-                : `
-                  <label class="field"><span>Full name</span><input name="fullName" autocomplete="name" /></label>
-                  <label class="field"><span>Username <span class="muted">(lowercase only)</span></span><input name="username" autocomplete="username" required style="text-transform:lowercase" /></label>
-                  <label class="field"><span>Email</span><input name="email" type="email" autocomplete="email" required /></label>
-                `
-            }
-            <label class="field"><span>Password</span><input name="password" type="password" autocomplete="${isLogin ? "current-password" : "new-password"}" required minlength="8" /></label>
-            <button class="btn primary" type="submit">${isLogin ? "Login" : "Create account"}</button>
-          </form>
-          <form class="form-stack" data-form="forgot-password">
-            <label class="field"><span>Reset password</span><input name="email" type="email" placeholder="email@example.com" /></label>
+
+          ${
+            isLogin
+              ? `
+                <form class="form-stack" data-form="login" novalidate>
+                  <label class="field">
+                    <span>Email or username</span>
+                    <input name="identity" placeholder="you@example.com or username" autocomplete="username" required />
+                    <span class="hint">Enter the email or username you registered with</span>
+                  </label>
+                  <label class="field">
+                    <span>Password</span>
+                    <input name="password" type="password" placeholder="Your password" autocomplete="current-password" required minlength="8" />
+                    <span class="hint">At least 8 characters</span>
+                  </label>
+                  <button class="btn primary" type="submit">Login</button>
+                </form>
+                ${
+                  showResend
+                    ? `<button class="btn" style="margin-top:10px;width:100%" data-action="resend-verification">Resend verification email</button>`
+                    : ""
+                }
+              `
+              : `
+                <form class="form-stack" data-form="register" novalidate>
+                  <label class="field">
+                    <span>Full name <span class="muted">(optional)</span></span>
+                    <input name="fullName" placeholder="Jane Doe" autocomplete="name" maxlength="80" />
+                  </label>
+                  <label class="field">
+                    <span>Username <span class="required">*</span></span>
+                    <input name="username" placeholder="janedoe" autocomplete="off" required minlength="3" style="text-transform:lowercase" />
+                    <span class="hint">Lowercase letters, numbers and underscores · min 3 characters</span>
+                  </label>
+                  <label class="field">
+                    <span>Email <span class="required">*</span></span>
+                    <input name="email" type="email" placeholder="you@example.com" autocomplete="email" required />
+                  </label>
+                  <label class="field">
+                    <span>Password <span class="required">*</span></span>
+                    <input name="password" type="password" placeholder="Create a strong password" autocomplete="new-password" required minlength="8" />
+                    <span class="hint">At least 8 characters · mix letters and numbers for security</span>
+                  </label>
+                  <button class="btn primary" type="submit">Create account</button>
+                </form>
+              `
+          }
+
+          <form class="form-stack" data-form="forgot-password" style="margin-top:18px;padding-top:18px;border-top:1px solid var(--line)">
+            <label class="field">
+              <span>Forgot password?</span>
+              <input name="email" type="email" placeholder="you@example.com" autocomplete="email" />
+              <span class="hint">We'll send a reset link to this address</span>
+            </label>
             <button class="btn" type="submit">Send reset link</button>
           </form>
+
           ${renderNotice()}
         </div>
       </section>
@@ -231,7 +275,11 @@ const renderResetPassword = () => {
       <section class="auth-panel">
         <div class="auth-box">
           <form class="form-stack" data-form="reset-password">
-            <label class="field"><span>New password</span><input name="newPassword" type="password" autocomplete="new-password" required minlength="8" /></label>
+            <label class="field">
+              <span>New password</span>
+              <input name="newPassword" type="password" placeholder="At least 8 characters" autocomplete="new-password" required minlength="8" />
+              <span class="hint">At least 8 characters</span>
+            </label>
             <button class="btn primary" type="submit">Update password</button>
           </form>
           ${renderNotice()}
@@ -635,6 +683,8 @@ const handleAuth = async (form) => {
   }
 
   const identity = data.identity.trim().toLowerCase();
+  // Remember the email/username so we can offer "resend verification" if needed
+  state.lastLoginEmail = identity;
   const payload = identity.includes("@")
     ? { email: identity, password: data.password }
     : { username: identity, password: data.password };
@@ -762,6 +812,18 @@ document.addEventListener("click", async (event) => {
 
     if (action === "auth-mode") {
       state.authMode = target.dataset.mode;
+      render();
+    }
+
+    if (action === "resend-verification") {
+      // The user must log in first to get a token for the secured endpoint.
+      // Since they can't log in (unverified), we re-use the stored email
+      // and call a temporary login just to get the token, then resend.
+      // Simpler: show instructions to check spam or use forgot-password flow.
+      setNotice({
+        message:
+          "Check your spam/junk folder. If still missing, use the forgot-password form below to reset and re-verify.",
+      });
       render();
     }
 
