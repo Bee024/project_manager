@@ -47,3 +47,35 @@ test("cors allows production frontend preflight with credentials", async (t) => 
     "true",
   );
 });
+
+test("cors allows current Vercel deployment origin", async () => {
+  const server = app.listen(0);
+  await new Promise((resolve) => {
+    server.once("listening", resolve);
+  });
+
+  try {
+    const { port } = server.address();
+    const origin =
+      "https://project-manager-aktgugi32-bee024s-projects.vercel.app";
+    const response = await fetch(`http://127.0.0.1:${port}/api/v1/auth/login`, {
+      method: "OPTIONS",
+      headers: {
+        Origin: origin,
+        "Access-Control-Request-Method": "POST",
+        "Access-Control-Request-Headers": "Content-Type",
+      },
+    });
+
+    assert.equal(response.status, 204);
+    assert.equal(response.headers.get("access-control-allow-origin"), origin);
+    assert.equal(
+      response.headers.get("access-control-allow-credentials"),
+      "true",
+    );
+  } finally {
+    await new Promise((resolve) => {
+      server.close(resolve);
+    });
+  }
+});

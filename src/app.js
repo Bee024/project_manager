@@ -29,6 +29,7 @@ const defaultCorsOrigins = [
   "http://localhost:3000",
   "http://localhost:8000",
   "https://manager-alpha-taupe.vercel.app",
+  "https://project-manager-aktgugi32-bee024s-projects.vercel.app",
 ];
 
 const normalizeOrigin = (value = "") => {
@@ -63,6 +64,7 @@ const getAllowedOrigins = () => {
         process.env.CLIENT_URL,
         process.env.SERVER_URL,
         process.env.VERCEL_URL,
+        process.env.VERCEL_BRANCH_URL,
         process.env.VERCEL_PROJECT_PRODUCTION_URL,
       ]
         .map(normalizeOrigin)
