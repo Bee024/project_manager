@@ -3,7 +3,16 @@ const app = document.querySelector("#app");
 // In production the frontend is served statically and needs to know
 // where the backend lives. Set window.API_BASE_URL via a meta tag or
 // leave empty to use relative URLs (same-origin / local dev).
-const API_BASE = window.API_BASE_URL || "";
+const getApiBase = () => {
+  const configured =
+    window.API_BASE_URL ||
+    document.querySelector('meta[name="api-base-url"]')?.content ||
+    "";
+
+  return configured.trim().replace(/\/+$/, "");
+};
+
+const API_BASE = getApiBase();
 
 const state = {
   authMode: "login",

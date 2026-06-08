@@ -24,40 +24,85 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const publicDir = path.resolve(__dirname, "../public");
 
+const defaultCorsOrigins = [
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "http://localhost:8000",
+  "https://manager-alpha-taupe.vercel.app",
+];
+
+const normalizeOrigin = (value = "") => {
+  const trimmed = String(value).trim();
+
+  if (!trimmed) return "";
+  if (trimmed === "*") return "*";
+
+  const candidate = /^https?:\/\//i.test(trimmed)
+    ? trimmed
+    : `https://${trimmed}`;
+
+  try {
+    return new URL(candidate).origin;
+  } catch {
+    return trimmed.replace(/\/+$/, "");
+  }
+};
+
+const parseOriginList = (value = "") => {
+  return String(value).split(",").map(normalizeOrigin).filter(Boolean);
+};
+
+const getAllowedOrigins = () => {
+  return [
+    ...new Set(
+      [
+        ...defaultCorsOrigins,
+        ...parseOriginList(process.env.CORS_ORIGIN),
+        ...parseOriginList(process.env.CORS_ORIGINS),
+        process.env.FRONTEND_URL,
+        process.env.CLIENT_URL,
+        process.env.SERVER_URL,
+        process.env.VERCEL_URL,
+        process.env.VERCEL_PROJECT_PRODUCTION_URL,
+      ]
+        .map(normalizeOrigin)
+        .filter(Boolean),
+    ),
+  ];
+};
+
+const normalizeApiBaseUrl = (value = "") =>
+  String(value).trim().replace(/\/+$/, "");
+
 const corsOptions = {
   origin(origin, callback) {
-    // read at request time so dotenv is already loaded
-    const allowedOrigins = (
-      process.env.CORS_ORIGIN ||
-      "http://localhost:5173,http://localhost:3000,http://localhost:8000,https://manager-alpha-taupe.vercel.app"
-    )
-      .split(",")
-      .map((o) => o.trim())
-      .filter(Boolean);
+    const allowedOrigins = getAllowedOrigins();
 
-    // wildcard: allow any origin — but reflect the actual origin back so
-    // credentials: true still works (browsers reject "*" + credentials)
+    // Wildcard origins must reflect the request origin when credentials are on.
     if (allowedOrigins.includes("*")) {
       callback(null, origin || true);
       return;
     }
-    // allow requests with no origin (e.g. mobile apps, curl, server-to-server)
+
+    // Allow requests with no origin, such as curl and server-to-server calls.
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
       return;
     }
+
     callback(new ApiError(403, "Not allowed by CORS"));
   },
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
+  maxAge: 86400,
 };
 
-// cors must be first — handles preflight OPTIONS before anything else
+// CORS must be first so preflight OPTIONS is handled before anything else.
 app.use(cors(corsOptions));
 app.options(/.*/, cors(corsOptions));
 
-// basic configuration
+// Basic configuration
 app.disable("x-powered-by");
 app.set("trust proxy", 1);
 app.use(securityHeaders);
@@ -77,15 +122,16 @@ app.use("/api/v1/notes", noteRouter);
 app.use("/api", notFoundHandler);
 
 // Serve the SPA for every non-API route.
-// Injects the backend URL so the browser knows where to send requests
-// when the frontend is hosted on a different origin (e.g. Vercel static).
+// Inject the backend URL when the frontend is hosted on a different origin.
 const htmlPath = path.join(publicDir, "index.html");
 
 app.get(/.*/, (req, res) => {
-  const serverUrl = (process.env.SERVER_URL || "").trim();
+  const apiBaseUrl = normalizeApiBaseUrl(
+    process.env.API_BASE_URL || process.env.SERVER_URL || "",
+  );
 
-  if (!serverUrl) {
-    // Same-origin (local dev) — serve file as-is
+  if (!apiBaseUrl) {
+    // Same-origin deployment or local dev.
     res.sendFile(htmlPath);
     return;
   }
@@ -93,8 +139,8 @@ app.get(/.*/, (req, res) => {
   try {
     const html = readFileSync(htmlPath, "utf8");
     const injected = html.replace(
-      'window.API_BASE_URL = ""',
-      `window.API_BASE_URL = ${JSON.stringify(serverUrl)}`,
+      /window\.API_BASE_URL\s*=\s*["'][^"']*["']\s*;/,
+      `window.API_BASE_URL = ${JSON.stringify(apiBaseUrl)};`,
     );
     res.setHeader("Content-Type", "text/html");
     res.send(injected);
