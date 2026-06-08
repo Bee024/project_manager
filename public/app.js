@@ -1,5 +1,10 @@
 const app = document.querySelector("#app");
 
+// In production the frontend is served statically and needs to know
+// where the backend lives. Set window.API_BASE_URL via a meta tag or
+// leave empty to use relative URLs (same-origin / local dev).
+const API_BASE = window.API_BASE_URL || "";
+
 const state = {
   authMode: "login",
   token: localStorage.getItem("project_camp_token") || "",
@@ -51,7 +56,7 @@ const authHeaders = () => {
 
 const request = async (path, options = {}) => {
   const isFormData = options.body instanceof FormData;
-  const response = await fetch(path, {
+  const response = await fetch(`${API_BASE}${path}`, {
     credentials: "include",
     ...options,
     headers: {

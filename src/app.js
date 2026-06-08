@@ -1,6 +1,7 @@
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import express from "express";
+import { readFileSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import {
@@ -31,9 +32,10 @@ const corsOptions = {
       .map((o) => o.trim())
       .filter(Boolean);
 
-    // allow all origins if CORS_ORIGIN is set to wildcard
+    // wildcard: allow any origin — but reflect the actual origin back so
+    // credentials: true still works (browsers reject "*" + credentials)
     if (allowedOrigins.includes("*")) {
-      callback(null, true);
+      callback(null, origin || true);
       return;
     }
     // allow requests with no origin (e.g. mobile apps, curl, server-to-server)
@@ -71,8 +73,31 @@ app.use("/api/v1/notes", noteRouter);
 
 app.use("/api", notFoundHandler);
 
+// Serve the SPA for every non-API route.
+// Injects the backend URL so the browser knows where to send requests
+// when the frontend is hosted on a different origin (e.g. Vercel static).
+const htmlPath = path.join(publicDir, "index.html");
+
 app.get(/.*/, (req, res) => {
-  res.sendFile(path.join(publicDir, "index.html"));
+  const serverUrl = (process.env.SERVER_URL || "").trim();
+
+  if (!serverUrl) {
+    // Same-origin (local dev) — serve file as-is
+    res.sendFile(htmlPath);
+    return;
+  }
+
+  try {
+    const html = readFileSync(htmlPath, "utf8");
+    const injected = html.replace(
+      'window.API_BASE_URL = ""',
+      `window.API_BASE_URL = ${JSON.stringify(serverUrl)}`,
+    );
+    res.setHeader("Content-Type", "text/html");
+    res.send(injected);
+  } catch {
+    res.sendFile(htmlPath);
+  }
 });
 
 app.use(errorHandler);
