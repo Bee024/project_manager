@@ -634,7 +634,7 @@ const handleAuth = async (form) => {
     return;
   }
 
-  const identity = data.identity.trim();
+  const identity = data.identity.trim().toLowerCase();
   const payload = identity.includes("@")
     ? { email: identity, password: data.password }
     : { username: identity, password: data.password };
